@@ -1,18 +1,53 @@
-// import { generateViews } from './app2.js'; // Assuming generateViews is defined in generateViews.js
 import http from 'http';
 import fs from 'fs';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import randomUseragent from 'random-useragent';
+import cheerio from 'cheerio';
 
-// const puppeteer = require('puppeteer');
-import puppeteer from "puppeteer-extra";
-import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import randomUseragent from "random-useragent";
-import cheerio from "cheerio";
-import { randomDelay } from "random-delay";
+// Initialize Puppeteer with Stealth Plugin
+puppeteer.use(StealthPlugin());
 
+// Function to generate views
+export async function generateViews(searchUrl, number) {
+  console.log('started');
+  
+  for (let i = 0; i < number; i++) {
+    const browser = await puppeteer.launch({
+      headless: true, // Ensure headless mode is true
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--window-size=1920x1080',
+      ]
+    });
+    const page = await browser.newPage();
+
+    const userAgent = randomUseragent.getRandom();
+    await page.setUserAgent(userAgent);
+
+    await page.goto(searchUrl, { timeout: 6000000 });
+
+    const html = await page.content();
+    const $ = cheerio.load(html);
+
+    for (let j = 0; j < 2; j++) {
+      await page.evaluate(() => {
+        window.scrollBy(0, window.innerHeight);
+      });
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    console.log('done');
+
+    await browser.close();
+  }
+}
 
 // Create HTTP server
 const server = http.createServer((req, res) => {
-  // Serve index.html for the root path
   if (req.url === '/' || req.url === '/index.html') {
     fs.readFile('index.html', (err, data) => {
       if (err) {
@@ -23,9 +58,7 @@ const server = http.createServer((req, res) => {
         res.end(data);
       }
     });
-  }
-  // Handle form submission
-  else if (req.method === 'POST' && req.url === '/generateViews') {
+  } else if (req.method === 'POST' && req.url === '/generateViews') {
     let body = '';
     req.on('data', chunk => {
       body += chunk.toString();
@@ -36,7 +69,6 @@ const server = http.createServer((req, res) => {
       const number = parseInt(formData.get('number'), 10);
       try {
         await generateViews(url, number);
-
         res.writeHead(200, { 'Content-Type': 'text/plain' });
         res.end('Views generated successfully!');
       } catch (error) {
@@ -44,57 +76,11 @@ const server = http.createServer((req, res) => {
         res.end('Error generating views: ' + error.message);
       }
     });
-  }
-  // Handle other routes
-  else {
+  } else {
     res.writeHead(404, { 'Content-Type': 'text/html' });
     res.end('<h1>Not Found</h1>');
   }
 });
-
-
-const searchUrl = `https://sportsbuddy.ng/2024/03/27/video-fiery-exchange-cristiano-ronaldo-unleashes-fury-as-shock-defeat-shatters-portugals-unbeaten-streak/`;
-
-
-export async function generateViews(searchUrl,number) {
-    console.log('started')
-  for (let i = 0; i < number; i++) {
-    console.log
-  puppeteer.use(StealthPlugin());
-  const browser = await puppeteer.launch({ headless: false }); // Launch Puppeteer in non-headless mode for debugging
-  const page = await browser.newPage();
-
-  
-  const userAgent = randomUseragent.getRandom();
-
-  await page.setUserAgent(userAgent);
-
-  // Increase navigation timeout
-  await page.goto(searchUrl
-    , { timeout: 6000000 }
-    );
-
-  // Wait for some time to simulate human-like behavior
-  // await page.waitForTimeout(randomDelay());
-
-  const html = await page.content();
-  const $ = cheerio.load(html);
-
-  // Simulate multiple views
-  for (let i = 0; i < 2; i++) {
-    await page.evaluate(() => {
-      window.scrollBy(0, window.innerHeight); // Scroll down the page
-    });
-     // Wait for some time to simulate reading the post
-     await new Promise(r => setTimeout(r, 2000));
-  }
-console.log('done')
-  // Close the browser
-  await browser.close();
-}
-}
-
-// generateViews(searchUrl,5).catch(error => console.error(error));
 
 // Start the server
 const PORT = process.env.PORT || 3000;
