@@ -56,10 +56,6 @@
       background-color: #45a049;
     }
 
-
-
-
-
     form {
       background-color: #fff;
       padding: 20px;
@@ -86,7 +82,6 @@
 </head>
 
 <body>
-  
   <form id="generateViewsForm" method="POST" action="generateViews">
     <h1>Generate Views</h1>
     <label for="url">URL:</label>
@@ -96,9 +91,10 @@
     <button type="submit">Generate Views</button>
     <p class="loading-message">Loading...</p>
     <p class="finished-message">Views generated successfully!</p>
+    <pre id="progress"></pre> <!-- Add this line to display the progress -->
   </form>
 
-  <!-- <script>
+  <script>
     const domain = window.location.origin;
     document.getElementById('generateViewsForm').addEventListener('submit', async function(event) {
       event.preventDefault(); // Prevent default form submission
@@ -108,21 +104,38 @@
 
       // Get form data
       const formData = new FormData(this);
-console.log(domain, formData, "echo this")
+      const url = formData.get('url');
+      const number = formData.get('number');
+
+      const progress = document.getElementById('progress');
+      progress.textContent = '';
+
+      const eventSource = new EventSource('/events');
+      eventSource.onmessage = (event) => {
+        progress.textContent += event.data + '\n';
+        if (event.data === 'All views generated') {
+          document.querySelector('.loading-message').style.display = 'none';
+          document.querySelector('.finished-message').style.display = 'block';
+          eventSource.close();
+        }
+      };
+
       try {
         // Send form data to server
-        const response = await fetch(`${domain}/generate`, {
+        const response = await fetch(`${domain}/generateViews`, {
           method: 'POST',
-          body: formData
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            url: url,
+            number: number
+          })
         });
 
         if (!response.ok) {
           throw new Error('Failed to generate views');
         }
-
-        console.log(response)
-        // Display finished message
-        document.querySelector('.finished-message').style.display = 'block';
       } catch (error) {
         console.error('Error:', error);
         // Handle error
@@ -131,6 +144,6 @@ console.log(domain, formData, "echo this")
         document.querySelector('.loading-message').style.display = 'none';
       }
     });
-  </script> -->
+  </script>
 </body>
 </html>
